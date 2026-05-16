@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kit Screenshot – Settings</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div class="page">
+
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="brand">
+        <img src="icons/icon32.png" alt="Kit" width="24" height="24" />
+        <span>Kit <strong>Screenshot</strong></span>
+      </div>
+      <ul class="nav-list">
+        <li><a href="#account" class="nav-link active">Account</a></li>
+        <li><a href="#general" class="nav-link">General</a></li>
+        <li><a href="#history" class="nav-link">History <span class="nav-badge premium-only">PRO</span></a></li>
+        <li><a href="#shortcuts" class="nav-link">Shortcuts</a></li>
+        <li><a href="#about" class="nav-link">About</a></li>
+      </ul>
+    </nav>
+
+    <!-- Main content -->
+    <main class="content">
+
+      <!-- ── Account ──────────────────────────────────────────────────────── -->
+      <section id="account" class="section active">
+        <h2 class="section-title">Account</h2>
+
+        <div class="card" id="account-free-card">
+          <div class="card-header">
+            <div>
+              <p class="card-title">Free Plan</p>
+              <p class="card-sub">5 full-page captures per day · Unlimited visible area</p>
+            </div>
+          </div>
+          <div class="feature-list">
+            <div class="feature-row"><span class="tick">✓</span> Visible area screenshot (unlimited)</div>
+            <div class="feature-row"><span class="tick">✓</span> Full page screenshot (5/day)</div>
+            <div class="feature-row"><span class="tick">✓</span> Annotation: pen, shapes, text</div>
+            <div class="feature-row"><span class="tick">✓</span> Export PNG</div>
+            <div class="feature-row"><span class="tick">✓</span> Copy to clipboard</div>
+            <div class="feature-row locked"><span class="lock">✗</span> Unlimited full-page captures</div>
+            <div class="feature-row locked"><span class="lock">✗</span> PDF export</div>
+            <div class="feature-row locked"><span class="lock">✗</span> JPEG quality control</div>
+            <div class="feature-row locked"><span class="lock">✗</span> Blur / redact tool</div>
+            <div class="feature-row locked"><span class="lock">✗</span> Capture history (50 captures)</div>
+            <div class="feature-row locked"><span class="lock">✗</span> Hide cookie banners & popups</div>
+            <div class="feature-row locked"><span class="lock">✗</span> Custom filename templates</div>
+            <div class="feature-row locked"><span class="lock">✗</span> Capture delay (up to 5s)</div>
+          </div>
+          <button class="btn-upgrade-full" id="btn-upgrade">⭐ Upgrade to Premium – $5/month</button>
+          <p class="small-note">One-time monthly charge via ExtensionPay · Cancel anytime</p>
+        </div>
+
+        <div class="card premium-card hidden" id="account-premium-card">
+          <div class="card-header">
+            <div>
+              <p class="card-title premium-text">⭐ Premium Plan Active</p>
+              <p class="card-sub">All features unlocked · Thank you for your support!</p>
+            </div>
+          </div>
+          <div class="feature-list">
+            <div class="feature-row"><span class="tick">✓</span> Everything in Free</div>
+            <div class="feature-row"><span class="tick">✓</span> Unlimited full-page captures</div>
+            <div class="feature-row"><span class="tick">✓</span> PDF &amp; JPEG export</div>
+            <div class="feature-row"><span class="tick">✓</span> Blur / redact sensitive data</div>
+            <div class="feature-row"><span class="tick">✓</span> Capture history (50 saves)</div>
+            <div class="feature-row"><span class="tick">✓</span> Delay &amp; hide banners</div>
+          </div>
+          <button class="btn-manage" id="btn-manage">Manage Subscription</button>
+        </div>
+      </section>
+
+      <!-- ── General ──────────────────────────────────────────────────────── -->
+      <section id="general" class="section">
+        <h2 class="section-title">General Settings</h2>
+
+        <div class="card">
+          <div class="setting-row">
+            <div class="setting-info">
+              <label for="sel-format" class="setting-label">Default format</label>
+              <p class="setting-desc">File format when downloading from the editor</p>
+            </div>
+            <select id="sel-format" class="select-md">
+              <option value="png">PNG (lossless)</option>
+              <option value="jpg">JPEG (smaller file)</option>
+              <option value="pdf">PDF <span>(Premium)</span></option>
+            </select>
+          </div>
+
+          <hr class="divider" />
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label for="inp-filename" class="setting-label">Filename template <span class="pro-badge">PRO</span></label>
+              <p class="setting-desc">Variables: <code>{title}</code>, <code>{date}</code>, <code>{time}</code>, <code>{url}</code></p>
+            </div>
+            <input type="text" id="inp-filename" class="input-md" placeholder="kit-{date}-{time}" />
+          </div>
+
+          <hr class="divider" />
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label for="sel-settle" class="setting-label">Scroll settle delay</label>
+              <p class="setting-desc">Wait time after each scroll during full-page capture</p>
+            </div>
+            <select id="sel-settle" class="select-md">
+              <option value="100">Fast (100ms)</option>
+              <option value="180" selected>Balanced (180ms)</option>
+              <option value="300">Careful (300ms)</option>
+              <option value="500">Slow (500ms)</option>
+            </select>
+          </div>
+
+          <hr class="divider" />
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Open editor after capture</label>
+              <p class="setting-desc">Automatically open annotation editor for every capture</p>
+            </div>
+            <label class="toggle-wrap">
+              <input type="checkbox" id="chk-auto-editor" checked />
+              <span class="toggle-knob"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="save-row">
+          <button class="btn-save" id="btn-save-general">Save Settings</button>
+          <span class="save-status hidden" id="save-status">✓ Saved</span>
+        </div>
+      </section>
+
+      <!-- ── History ──────────────────────────────────────────────────────── -->
+      <section id="history" class="section">
+        <h2 class="section-title">Capture History <span class="pro-badge">PRO</span></h2>
+
+        <div class="premium-gate hidden" id="history-gate">
+          <p>⭐ Capture history is a Premium feature.</p>
+          <button class="btn-upgrade-full" id="btn-upgrade-history">Upgrade for $5/mo →</button>
+        </div>
+
+        <div id="history-grid" class="history-grid"></div>
+        <div class="empty-state hidden" id="history-empty">
+          <p>No captures yet. Start capturing to build your history.</p>
+        </div>
+        <div class="history-footer" id="history-footer">
+          <button class="btn-danger" id="btn-clear-history">Clear History</button>
+        </div>
+      </section>
+
+      <!-- ── Shortcuts ────────────────────────────────────────────────────── -->
+      <section id="shortcuts" class="section">
+        <h2 class="section-title">Keyboard Shortcuts</h2>
+        <div class="card">
+          <div class="shortcut-row">
+            <span>Capture full page</span>
+            <kbd>Alt + Shift + S</kbd>
+          </div>
+          <hr class="divider" />
+          <div class="shortcut-row">
+            <span>Capture visible area</span>
+            <kbd>Alt + Shift + V</kbd>
+          </div>
+          <hr class="divider" />
+          <div class="shortcut-row">
+            <span>Pen tool (editor)</span>
+            <kbd>P</kbd>
+          </div>
+          <hr class="divider" />
+          <div class="shortcut-row">
+            <span>Arrow tool (editor)</span>
+            <kbd>A</kbd>
+          </div>
+          <hr class="divider" />
+          <div class="shortcut-row">
+            <span>Rectangle (editor)</span>
+            <kbd>R</kbd>
+          </div>
+          <hr class="divider" />
+          <div class="shortcut-row">
+            <span>Text tool (editor)</span>
+            <kbd>T</kbd>
+          </div>
+          <hr class="divider" />
+          <div class="shortcut-row">
+            <span>Blur tool (editor, PRO)</span>
+            <kbd>B</kbd>
+          </div>
+          <hr class="divider" />
+          <div class="shortcut-row">
+            <span>Undo (editor)</span>
+            <kbd>Ctrl + Z</kbd>
+          </div>
+          <hr class="divider" />
+          <div class="shortcut-row">
+            <span>Redo (editor)</span>
+            <kbd>Ctrl + Y</kbd>
+          </div>
+          <hr class="divider" />
+          <div class="shortcut-row">
+            <span>Save PNG (editor)</span>
+            <kbd>Ctrl + S</kbd>
+          </div>
+        </div>
+        <p class="small-note" style="margin-top:12px">Capture shortcuts can be customized at <code>chrome://extensions/shortcuts</code></p>
+      </section>
+
+      <!-- ── About ────────────────────────────────────────────────────────── -->
+      <section id="about" class="section">
+        <h2 class="section-title">About</h2>
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+            <img src="icons/icon48.png" alt="Kit" width="48" height="48" />
+            <div>
+              <p style="font-size:18px;font-weight:700">Kit Screenshot</p>
+              <p style="color:var(--text-muted);font-size:13px">Version 1.0.0</p>
+            </div>
+          </div>
+          <p style="line-height:1.6;color:var(--text-muted);font-size:13px">
+            Full-page screenshot, annotation, and export tool for Chrome. Capture any webpage, annotate with professional tools, and export as PNG, JPEG, or PDF.
+          </p>
+          <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn-link-out" id="btn-rate">⭐ Rate on Chrome Web Store</button>
+            <button class="btn-link-out" id="btn-support">📧 Support</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
