@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kit Screenshot</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="logo">
+      <img src="icons/icon32.png" alt="Kit" width="20" height="20" />
+      <span class="logo-text">Kit</span>
+      <span class="logo-sub">Screenshot</span>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="btn-options" title="Settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Premium badge -->
+  <div class="premium-badge hidden" id="premium-badge">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+    Premium Active
+  </div>
+
+  <!-- Capture buttons -->
+  <section class="capture-section">
+    <button class="btn btn-primary btn-full" id="btn-visible">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>
+      Capture Visible Area
+      <span class="badge-free">FREE</span>
+    </button>
+
+    <button class="btn btn-primary btn-full" id="btn-fullpage">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18"/></svg>
+      Capture Full Page
+      <span class="badge-free" id="badge-fullpage">5/day FREE</span>
+    </button>
+  </section>
+
+  <!-- Free tier counter -->
+  <div class="usage-bar hidden" id="usage-bar">
+    <div class="usage-label">
+      <span>Full-page captures today</span>
+      <span id="usage-text">0 / 5</span>
+    </div>
+    <div class="usage-track">
+      <div class="usage-fill" id="usage-fill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- Delay options (premium) -->
+  <section class="options-row" id="options-row">
+    <div class="option-group">
+      <label class="option-label">Delay
+        <span class="premium-lock" id="delay-lock">★</span>
+      </label>
+      <select id="sel-delay" class="select-sm">
+        <option value="0">None</option>
+        <option value="1000">1s</option>
+        <option value="2000">2s</option>
+        <option value="3000">3s</option>
+        <option value="5000">5s</option>
+      </select>
+    </div>
+    <div class="option-group">
+      <label class="option-label">Hide banners
+        <span class="premium-lock" id="hide-lock">★</span>
+      </label>
+      <label class="toggle-wrap">
+        <input type="checkbox" id="chk-hide-fixed" />
+        <span class="toggle-knob"></span>
+      </label>
+    </div>
+  </section>
+
+  <!-- Divider -->
+  <hr class="divider" />
+
+  <!-- Premium upsell (shown to free users) -->
+  <section class="upsell" id="upsell-section">
+    <p class="upsell-title">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      Upgrade to Premium – $5/mo
+    </p>
+    <ul class="upsell-list">
+      <li>✓ Unlimited full-page captures</li>
+      <li>✓ Export as PDF or JPEG</li>
+      <li>✓ Advanced annotations (arrows, blur, text)</li>
+      <li>✓ Capture history (last 50)</li>
+      <li>✓ Custom filename templates</li>
+      <li>✓ Hide cookie banners & popups</li>
+    </ul>
+    <button class="btn btn-upgrade btn-full" id="btn-upgrade">Upgrade Now →</button>
+    <button class="btn-link" id="btn-manage">Already subscribed? Sign in</button>
+  </section>
+
+  <!-- Status / loading overlay -->
+  <div class="overlay hidden" id="overlay">
+    <div class="spinner"></div>
+    <p class="overlay-msg" id="overlay-msg">Capturing…</p>
+  </div>
+
+  <!-- Error toast -->
+  <div class="toast hidden" id="toast"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

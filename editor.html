@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kit – Edit Screenshot</title>
+  <link rel="stylesheet" href="editor.css" />
+</head>
+<body>
+
+<!-- Toolbar -->
+<div class="toolbar" id="toolbar">
+  <!-- Left: tools -->
+  <div class="toolbar-group" id="tool-group">
+    <button class="tool-btn active" data-tool="select" title="Select (S)">
+      <svg viewBox="0 0 24 24"><path d="M4 4l16 7-7 1-4 8z" fill="currentColor"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="pen" title="Freehand Pen (P)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="arrow" title="Arrow (A)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="19" x2="19" y2="5"/><polyline points="8 5 19 5 19 16"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="rect" title="Rectangle (R)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="ellipse" title="Ellipse (E)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="10" ry="7"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="text" title="Text (T)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+    </button>
+    <button class="tool-btn premium-tool" data-tool="blur" title="Blur / Redact (B) — Premium">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/></svg>
+      <span class="lock-pip">★</span>
+    </button>
+    <div class="separator"></div>
+    <button class="tool-btn" id="btn-undo" title="Undo (Ctrl+Z)" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+    </button>
+    <button class="tool-btn" id="btn-redo" title="Redo (Ctrl+Y)" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>
+    </button>
+  </div>
+
+  <!-- Center: color + size -->
+  <div class="toolbar-group">
+    <input type="color" id="color-picker" value="#e63946" title="Stroke color" class="color-input" />
+    <input type="color" id="fill-picker" value="#e6394600" title="Fill color" class="color-input" />
+    <label class="size-label" title="Stroke width">
+      <svg viewBox="0 0 16 16" width="12" height="12"><circle cx="8" cy="8" r="5" fill="currentColor"/></svg>
+      <input type="range" id="stroke-size" min="1" max="20" value="3" class="range-sm" />
+    </label>
+    <select id="font-size-sel" class="select-xs" title="Font size (text tool)">
+      <option value="14">14px</option>
+      <option value="18">18px</option>
+      <option value="24" selected>24px</option>
+      <option value="32">32px</option>
+      <option value="48">48px</option>
+      <option value="64">64px</option>
+    </select>
+  </div>
+
+  <!-- Right: actions -->
+  <div class="toolbar-group">
+    <button class="action-btn" id="btn-copy" title="Copy to clipboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      Copy
+    </button>
+    <div class="download-group">
+      <button class="action-btn primary" id="btn-download-png" title="Save as PNG">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        PNG
+      </button>
+      <button class="action-btn" id="btn-download-jpg" title="Save as JPEG">JPG</button>
+      <button class="action-btn premium-action" id="btn-download-pdf" title="Save as PDF — Premium">
+        PDF <span class="lock-pip">★</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Canvas area -->
+<div class="canvas-wrap" id="canvas-wrap">
+  <canvas id="main-canvas"></canvas>
+  <!-- Text input overlay -->
+  <textarea id="text-input" class="text-input hidden" rows="1" placeholder="Type here…"></textarea>
+</div>
+
+<!-- Premium nag for blur tool -->
+<div class="premium-nag hidden" id="premium-nag">
+  <div class="nag-box">
+    <p>⭐ The <strong>Blur / Redact</strong> tool and <strong>PDF export</strong> are Premium features.</p>
+    <button id="nag-upgrade">Upgrade for $5/mo →</button>
+    <button id="nag-close">Dismiss</button>
+  </div>
+</div>
+
+<!-- Loading -->
+<div class="loading-screen" id="loading-screen">
+  <div class="spinner"></div>
+  <p>Loading screenshot…</p>
+</div>
+
+<script src="lib/jspdf.umd.min.js"></script>
+<script src="editor.js"></script>
+</body>
+</html>
