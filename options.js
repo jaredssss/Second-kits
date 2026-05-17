@@ -81,19 +81,35 @@ async function saveGeneralSettings() {
   setTimeout(() => $("save-status").classList.add("hidden"), 1500);
 }
 
-function historyItemHTML(item) {
+function isSafeImageDataUrl(url) {
+  return typeof url === "string" && /^data:image\/(png|jpe?g|webp);base64,/i.test(url);
+}
+
+function createHistoryItemElement(item) {
   const dt = new Date(item.date || Date.now()).toLocaleString();
-  const t = (item.title || "Untitled").replace(/[<>&"]/g, "");
-  const u = (item.url || "").replace(/[<>&"]/g, "");
-  return `
-    <article class="history-item">
-      <img src="${item.thumb || ""}" alt="Capture preview" />
-      <div class="history-meta">
-        <div><strong>${item.type || "capture"}</strong> · ${dt}</div>
-        <div title="${u}">${t}</div>
-      </div>
-    </article>
-  `;
+
+  const article = document.createElement("article");
+  article.className = "history-item";
+
+  const img = document.createElement("img");
+  img.alt = "Capture preview";
+  img.src = isSafeImageDataUrl(item.thumb) ? item.thumb : "";
+
+  const meta = document.createElement("div");
+  meta.className = "history-meta";
+
+  const top = document.createElement("div");
+  const strong = document.createElement("strong");
+  strong.textContent = item.type || "capture";
+  top.append(strong, ` · ${dt}`);
+
+  const title = document.createElement("div");
+  title.title = item.url || "";
+  title.textContent = item.title || "Untitled";
+
+  meta.append(top, title);
+  article.append(img, meta);
+  return article;
 }
 
 async function loadHistory() {
@@ -109,7 +125,11 @@ async function loadHistory() {
     return;
   }
   $("history-empty").classList.add("hidden");
-  $("history-grid").innerHTML = history.map(historyItemHTML).join("");
+  const grid = $("history-grid");
+  grid.textContent = "";
+  history.forEach((item) => {
+    grid.appendChild(createHistoryItemElement(item));
+  });
 }
 
 async function clearHistory() {
