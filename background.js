@@ -242,6 +242,36 @@ function blobToDataUrl(blob) {
   });
 }
 
+function makeCaptureFilename(meta = {}, ext = 'png') {
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const safeTitle = String(meta.title || '')
+    .replace(/[\\/:*?"<>|\u0000-\u001F]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80);
+  const base = safeTitle || `kit-screenshot-${ts}`;
+  return `${base}.${ext}`;
+}
+
+async function outputCapture(blob, meta) {
+  const { autoEditor = true } = await chrome.storage.local.get(['autoEditor']);
+  if (autoEditor !== false) {
+    await openEditorWithBlob(blob, meta);
+    return;
+  }
+
+  const objectUrl = URL.createObjectURL(blob);
+  try {
+    await chrome.downloads.download({
+      url: objectUrl,
+      filename: makeCaptureFilename(meta, 'png'),
+      saveAs: false
+    });
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 15000);
+  }
+}
+
 // ── Open editor tab ───────────────────────────────────────────────────────────
 async function openEditorWithBlob(blob, meta) {
   // Store image in session storage keyed by random ID
@@ -282,7 +312,8 @@ async function handleMessage(msg, sender) {
       if (!tab) return { error: 'No active tab' };
       const blob = await captureVisible(tab);
       const meta = { url: tab.url, title: tab.title, type: 'visible' };
-      await openEditorWithBlob(blob, meta);
+      if (await isPremium()) await saveToHistory(blob, meta);
+      await outputCapture(blob, meta);
       return { ok: true };
     }
 
@@ -307,7 +338,7 @@ async function handleMessage(msg, sender) {
 
       const meta = { url: tab.url, title: tab.title, type: 'fullpage' };
       if (premium) await saveToHistory(blob, meta);
-      await openEditorWithBlob(blob, meta);
+      await outputCapture(blob, meta);
       return { ok: true };
     }
 

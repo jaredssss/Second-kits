@@ -26,6 +26,7 @@
   const MAX_UNDO  = 25;
 
   let isDrawing = false;
+  let movedSinceDown = false;
   let startX = 0, startY = 0;
   let lastX = 0, lastY = 0;
   let snapshot = null;    // canvas snapshot before shape being drawn
@@ -173,6 +174,7 @@
     startX = pos.x; startY = pos.y;
     lastX  = pos.x; lastY  = pos.y;
     isDrawing = true;
+    movedSinceDown = false;
     setDrawStyles();
 
     if (currentTool === 'text') {
@@ -195,6 +197,7 @@
   function onMouseMove(e) {
     if (!isDrawing) return;
     const pos = canvasPos(e);
+    movedSinceDown = true;
 
     setDrawStyles();
 
@@ -252,6 +255,13 @@
     const pos = clampToCanvas(rawPos.x, rawPos.y);
     setDrawStyles();
 
+    if (!movedSinceDown && ['pen', 'rect', 'ellipse', 'arrow', 'blur'].includes(currentTool)) {
+      if (snapshot && ['rect', 'ellipse', 'arrow', 'blur'].includes(currentTool)) {
+        ctx.putImageData(snapshot, 0, 0);
+      }
+      return;
+    }
+
     if (currentTool === 'blur') {
       if (!isPremium) { showPremiumNag(); ctx.putImageData(snapshot, 0, 0); return; }
       const x = Math.round(Math.min(startX, pos.x));
@@ -259,6 +269,7 @@
       const w = Math.round(Math.abs(pos.x - startX));
       const h = Math.round(Math.abs(pos.y - startY));
       if (w > 4 && h > 4) blurRegion(x, y, w, h);
+      else { ctx.putImageData(snapshot, 0, 0); return; }
     }
 
     pushUndo();
@@ -364,12 +375,11 @@
   // Copy to clipboard
   document.getElementById('btn-copy').addEventListener('click', async () => {
     try {
-      canvas.toBlob(async blob => {
-        await navigator.clipboard.write([
-          new ClipboardItem({ 'image/png': blob })
-        ]);
-        flashBtn('btn-copy', '✓ Copied!');
-      }, 'image/png');
+      const blob = await canvasToBlob('image/png');
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': blob })
+      ]);
+      flashBtn('btn-copy', '✓ Copied!');
     } catch (e) {
       alert('Copy failed: ' + e.message);
     }
@@ -423,6 +433,15 @@
         if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
         else resolve(resp || {});
       });
+    });
+  }
+
+  function canvasToBlob(type, quality) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(blob => {
+        if (blob) resolve(blob);
+        else reject(new Error('Failed to create image blob'));
+      }, type, quality);
     });
   }
 
