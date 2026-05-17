@@ -418,7 +418,13 @@
   }
 
   function showError(msg) {
-    loadingScreen.innerHTML = `<p style="color:#ef4444;font-size:14px;text-align:center;padding:20px">${msg}</p>`;
+    const p = document.createElement('p');
+    p.style.color = '#ef4444';
+    p.style.fontSize = '14px';
+    p.style.textAlign = 'center';
+    p.style.padding = '20px';
+    p.textContent = msg;
+    loadingScreen.replaceChildren(p);
   }
 
   // ── Boot ──────────────────────────────────────────────────────────────────
