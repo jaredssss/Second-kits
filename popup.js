@@ -6,13 +6,18 @@ const $ = id => document.getElementById(id);
 let isPremium = false;
 let captureCount = 0;
 const LIMIT = 5;
+let settleMs = 180;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
   try {
-    const status = await sendMsg({ action: 'get_status' });
+    const [status, prefs] = await Promise.all([
+      sendMsg({ action: 'get_status' }),
+      chrome.storage.local.get(['settleMs'])
+    ]);
     isPremium = status.premium || false;
     captureCount = status.count || 0;
+    settleMs = prefs.settleMs || 180;
     updateUI();
   } catch (e) {
     showToast('Could not load status', true);
@@ -81,7 +86,7 @@ async function doCapture(action) {
   }
 
   try {
-    const result = await sendMsg({ action, settleMs: 220, hideFixed });
+    const result = await sendMsg({ action, settleMs, hideFixed });
     if (result.error === 'limit_reached') {
       showToast('Daily limit reached. Upgrade to Premium for unlimited captures.', true);
     } else if (result.error) {

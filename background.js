@@ -224,9 +224,9 @@ async function saveToHistory(blob, meta) {
 
 function blobToDataUrl(blob) {
   return new Promise((resolve, reject) => {
-    const reader = new FileReaderSync ? new FileReaderSync() : null;
-    if (reader) {
+    if (typeof FileReaderSync !== 'undefined') {
       try {
+        const reader = new FileReaderSync();
         const ab = reader.readAsDataURL(blob);
         resolve(ab);
         return;
