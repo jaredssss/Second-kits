@@ -110,6 +110,13 @@
     };
   }
 
+  function clampToCanvas(x, y) {
+    return {
+      x: Math.max(0, Math.min(canvas.width, x)),
+      y: Math.max(0, Math.min(canvas.height, y))
+    };
+  }
+
   // ── Blur / pixelate region ─────────────────────────────────────────────────
   function blurRegion(x, y, w, h) {
     const px = 12; // pixelation block size
@@ -161,6 +168,7 @@
 
   function onMouseDown(e) {
     if (e.button !== 0) return;
+    if (currentTool === 'select') return;
     const pos = canvasPos(e);
     startX = pos.x; startY = pos.y;
     lastX  = pos.x; lastY  = pos.y;
@@ -240,7 +248,8 @@
   function onMouseUp(e) {
     if (!isDrawing) return;
     isDrawing = false;
-    const pos = canvasPos(e);
+    const rawPos = canvasPos(e);
+    const pos = clampToCanvas(rawPos.x, rawPos.y);
     setDrawStyles();
 
     if (currentTool === 'blur') {
