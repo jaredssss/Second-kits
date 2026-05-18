@@ -65,4 +65,5 @@ Output:
 
 ## Notes
 - Extension ID used for billing is hardcoded to `kit`.
-- Before Web Store publish, replace support/store links in `options.js`.
+- Full-page capture now runs directly from `background.js` via `chrome.scripting.executeScript` helpers (no injected content-script capture path).
+- Settings links in `options.js` are configured to real external endpoints (Web Store category + project issues page).

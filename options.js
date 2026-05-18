@@ -1,4 +1,8 @@
 const $ = (id) => document.getElementById(id);
+const EXTERNAL_LINKS = {
+  webStore: "https://chromewebstore.google.com/category/extensions",
+  support: "https://github.com/jaredssss/Second-kits/issues"
+};
 
 let isPremium = false;
 
@@ -156,10 +160,10 @@ function bindEvents() {
   $("btn-manage").addEventListener("click", () => sendMsg({ action: "open_manage" }));
 
   $("btn-rate").addEventListener("click", () => {
-    chrome.tabs.create({ url: "https://chrome.google.com/webstore" });
+    chrome.tabs.create({ url: EXTERNAL_LINKS.webStore });
   });
   $("btn-support").addEventListener("click", () => {
-    chrome.tabs.create({ url: "mailto:support@example.com?subject=Kit%20Screenshot%20Support" });
+    chrome.tabs.create({ url: EXTERNAL_LINKS.support });
   });
 
   $("sel-format").addEventListener("change", (e) => {
