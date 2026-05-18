@@ -11,6 +11,8 @@ extpay.startBackground();
 const FREE_DAILY_FULLPAGE_LIMIT = 5;
 const CAPTURE_SETTLE_MS = 180;      // wait after scroll before capture
 const MAX_CANVAS_SIDE = 32000;       // Chrome GPU limit guard
+const CAPTURE_DB_NAME = 'kit-capture-db';
+const CAPTURE_DB_STORE = 'captures';
 
 // ── Utility helpers ───────────────────────────────────────────────────────────
 function sleep(ms) {
@@ -144,12 +146,74 @@ function dataUrlToArrayBuffer(dataUrl) {
   return bytes.buffer;
 }
 
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+function formatFilenameTemplate(template, meta = {}, date = new Date()) {
+  const safeTemplate = typeof template === 'string' && template.trim()
+    ? template.trim()
+    : 'kit-{date}-{time}';
+  const dateStr = `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+  const timeStr = `${pad2(date.getHours())}-${pad2(date.getMinutes())}-${pad2(date.getSeconds())}`;
+  const raw = safeTemplate
+    .replaceAll('{title}', String(meta.title || ''))
+    .replaceAll('{date}', dateStr)
+    .replaceAll('{time}', timeStr)
+    .replaceAll('{url}', String(meta.url || ''));
+  const cleaned = raw
+    .replace(/[\\/:*?"<>|\u0000-\u001F]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 120);
+  return cleaned || `kit-${dateStr}-${timeStr}`;
+}
+
+function makeCaptureFilename(meta = {}, ext = 'png', template = 'kit-{date}-{time}') {
+  const base = formatFilenameTemplate(template, meta);
+  return `${base}.${ext}`;
+}
+
+function openCaptureDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(CAPTURE_DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(CAPTURE_DB_STORE)) {
+        db.createObjectStore(CAPTURE_DB_STORE, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error || new Error('Failed to open capture DB'));
+  });
+}
+
+async function idbPutCaptureRecord(id, blob, meta) {
+  const db = await openCaptureDb();
+  try {
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(CAPTURE_DB_STORE, 'readwrite');
+      const store = tx.objectStore(CAPTURE_DB_STORE);
+      store.put({ id, blob, meta, createdAt: Date.now() });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error || new Error('Failed to save capture'));
+      tx.onabort = () => reject(tx.error || new Error('Failed to save capture'));
+    });
+  } finally {
+    db.close();
+  }
+}
+
 // ── Full-page capture ─────────────────────────────────────────────────────────
 async function captureFullPage(tab, options = {}) {
   const { settleMs = CAPTURE_SETTLE_MS, hideFixed = true } = options;
 
   await injectContentScript(tab.id);
   const info = await getPageInfo(tab.id);
+
+  if (info.totalWidth * info.dpr > MAX_CANVAS_SIDE || info.totalHeight * info.dpr > MAX_CANVAS_SIDE) {
+    throw new Error('page_too_large');
+  }
 
   const canvasW = Math.min(info.totalWidth  * info.dpr, MAX_CANVAS_SIDE);
   const canvasH = Math.min(info.totalHeight * info.dpr, MAX_CANVAS_SIDE);
@@ -242,19 +306,9 @@ function blobToDataUrl(blob) {
   });
 }
 
-function makeCaptureFilename(meta = {}, ext = 'png') {
-  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const safeTitle = String(meta.title || '')
-    .replace(/[\\/:*?"<>|\u0000-\u001F]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 80);
-  const base = safeTitle || `kit-screenshot-${ts}`;
-  return `${base}.${ext}`;
-}
-
 async function outputCapture(blob, meta) {
-  const { autoEditor = true } = await chrome.storage.local.get(['autoEditor']);
+  const { autoEditor = true, filenameTemplate = 'kit-{date}-{time}' } =
+    await chrome.storage.local.get(['autoEditor', 'filenameTemplate']);
   if (autoEditor !== false) {
     await openEditorWithBlob(blob, meta);
     return;
@@ -264,7 +318,7 @@ async function outputCapture(blob, meta) {
   try {
     await chrome.downloads.download({
       url: objectUrl,
-      filename: makeCaptureFilename(meta, 'png'),
+      filename: makeCaptureFilename(meta, 'png', filenameTemplate),
       saveAs: false
     });
   } finally {
@@ -274,10 +328,8 @@ async function outputCapture(blob, meta) {
 
 // ── Open editor tab ───────────────────────────────────────────────────────────
 async function openEditorWithBlob(blob, meta) {
-  // Store image in session storage keyed by random ID
   const id = crypto.randomUUID();
-  const dataUrl = await blobToDataUrl(blob);
-  await chrome.storage.session.set({ [`capture_${id}`]: dataUrl, [`meta_${id}`]: meta });
+  await idbPutCaptureRecord(id, blob, meta);
   await chrome.tabs.create({ url: chrome.runtime.getURL(`editor.html?id=${id}`) });
 }
 
