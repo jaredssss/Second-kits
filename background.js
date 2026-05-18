@@ -21,7 +21,7 @@ function sleep(ms) {
 
 function today() {
   const d = new Date();
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
 async function getTodayCount() {
@@ -60,17 +60,6 @@ async function isPremium() {
 }
 
 // ── Capture helpers ───────────────────────────────────────────────────────────
-async function injectContentScript(tabId) {
-  try {
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ['content.js']
-    });
-  } catch (e) {
-    // Already injected or not injectable (chrome:// pages etc.)
-  }
-}
-
 async function getPageInfo(tabId) {
   const [result] = await chrome.scripting.executeScript({
     target: { tabId },
@@ -114,15 +103,50 @@ async function getActualScroll(tabId) {
 async function hideFixedElements(tabId) {
   await chrome.scripting.executeScript({
     target: { tabId },
-    func: () => {
+    func: async () => {
+      const MAX_SCANNED = 3000;
+      const MAX_HIDDEN = 400;
+      const YIELD_EVERY = 250;
+      const VIEWPORT_MARGIN = 200;
+
       window.__kitHiddenEls = [];
-      document.querySelectorAll('*').forEach(el => {
-        const s = window.getComputedStyle(el);
-        if (s.position === 'fixed' || s.position === 'sticky') {
-          window.__kitHiddenEls.push({ el, vis: el.style.visibility });
-          el.style.visibility = 'hidden';
+      const root = document.body || document.documentElement;
+      if (!root) return;
+
+      let scanned = 0;
+      let hidden = 0;
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+      let node = walker.currentNode;
+      while (node && scanned < MAX_SCANNED && hidden < MAX_HIDDEN) {
+        const el = node;
+        node = walker.nextNode();
+        scanned++;
+
+        if (scanned % YIELD_EVERY === 0) {
+          await new Promise(resolve => setTimeout(resolve, 0));
         }
-      });
+
+        if (el === document.body || el === document.documentElement) continue;
+        const rect = el.getBoundingClientRect();
+        if (!rect.width || !rect.height) continue;
+        const outOfViewport =
+          rect.bottom < -VIEWPORT_MARGIN ||
+          rect.top > window.innerHeight + VIEWPORT_MARGIN ||
+          rect.right < -VIEWPORT_MARGIN ||
+          rect.left > window.innerWidth + VIEWPORT_MARGIN;
+        if (outOfViewport) continue;
+
+        const s = window.getComputedStyle(el);
+        if (s.position !== 'fixed' && s.position !== 'sticky') continue;
+
+        window.__kitHiddenEls.push({
+          el,
+          visibility: el.style.getPropertyValue('visibility'),
+          priority: el.style.getPropertyPriority('visibility')
+        });
+        el.style.setProperty('visibility', 'hidden', 'important');
+        hidden++;
+      }
     }
   });
 }
@@ -132,7 +156,14 @@ async function restoreFixedElements(tabId) {
     target: { tabId },
     func: () => {
       if (!window.__kitHiddenEls) return;
-      window.__kitHiddenEls.forEach(({ el, vis }) => { el.style.visibility = vis; });
+      window.__kitHiddenEls.forEach(({ el, visibility, priority }) => {
+        if (!el || !el.isConnected) return;
+        if (visibility) {
+          el.style.setProperty('visibility', visibility, priority || '');
+        } else {
+          el.style.removeProperty('visibility');
+        }
+      });
       delete window.__kitHiddenEls;
     }
   });
@@ -208,7 +239,6 @@ async function idbPutCaptureRecord(id, blob, meta) {
 async function captureFullPage(tab, options = {}) {
   const { settleMs = CAPTURE_SETTLE_MS, hideFixed = true } = options;
 
-  await injectContentScript(tab.id);
   const info = await getPageInfo(tab.id);
 
   if (info.totalWidth * info.dpr > MAX_CANVAS_SIDE || info.totalHeight * info.dpr > MAX_CANVAS_SIDE) {

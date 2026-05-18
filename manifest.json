@@ -31,14 +31,7 @@
     "tabs"
   ],
   "host_permissions": [
-    "https://extensionpay.com/*",
-    "<all_urls>"
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["editor.html", "icons/*"],
-      "matches": ["<all_urls>"]
-    }
+    "https://extensionpay.com/*"
   ],
   "commands": {
     "capture-fullpage": {
