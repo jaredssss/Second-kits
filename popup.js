@@ -89,6 +89,8 @@ async function doCapture(action) {
     const result = await sendMsg({ action, settleMs, hideFixed });
     if (result.error === 'limit_reached') {
       showToast('Daily limit reached. Upgrade to Premium for unlimited captures.', true);
+    } else if (result.error === 'page_too_large') {
+      showToast('This page is too large to capture at current zoom. Reduce zoom and try again.', true);
     } else if (result.error) {
       showToast(result.error, true);
     } else {

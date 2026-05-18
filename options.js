@@ -49,7 +49,7 @@ async function loadGeneralSettings() {
   $("sel-settle").value = String(d.settleMs || 180);
   $("chk-auto-editor").checked = d.autoEditor !== false;
 
-  if (!isPremium && $("sel-format").value === "pdf") {
+  if (!isPremium && ["jpg", "pdf"].includes($("sel-format").value)) {
     $("sel-format").value = "png";
   }
 }
@@ -60,8 +60,8 @@ async function saveGeneralSettings() {
   const settleMs = parseInt($("sel-settle").value, 10) || 180;
   const autoEditor = $("chk-auto-editor").checked;
 
-  if (!isPremium && format === "pdf") {
-    alert("PDF default format is Premium.");
+  if (!isPremium && (format === "jpg" || format === "pdf")) {
+    alert("JPEG/PDF default formats are Premium.");
     return;
   }
 
@@ -163,8 +163,8 @@ function bindEvents() {
   });
 
   $("sel-format").addEventListener("change", (e) => {
-    if (!isPremium && e.target.value === "pdf") {
-      alert("PDF export is a Premium feature.");
+    if (!isPremium && (e.target.value === "jpg" || e.target.value === "pdf")) {
+      alert("JPEG/PDF export is a Premium feature.");
       e.target.value = "png";
     }
   });

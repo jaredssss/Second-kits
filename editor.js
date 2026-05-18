@@ -11,6 +11,8 @@
   const ctx     = canvas.getContext('2d');
   const textInput = document.getElementById('text-input');
   const premNag = document.getElementById('premium-nag');
+  const CAPTURE_DB_NAME = 'kit-capture-db';
+  const CAPTURE_DB_STORE = 'captures';
 
   let isPremium = false;
   let baseImage = null;   // HTMLImageElement
@@ -19,6 +21,9 @@
   let fillColor    = 'transparent';
   let strokeSize   = 3;
   let fontSize     = 24;
+  let defaultFormat = 'png';
+  let filenameTemplate = 'kit-{date}-{time}';
+  let captureMeta = {};
 
   // Undo/redo stacks store ImageData snapshots
   const undoStack = [];
@@ -31,12 +36,95 @@
   let lastX = 0, lastY = 0;
   let snapshot = null;    // canvas snapshot before shape being drawn
 
-  // ── Load screenshot from session storage ──────────────────────────────────
+  function pad2(n) {
+    return String(n).padStart(2, '0');
+  }
+
+  function buildFilename(ext) {
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+    const timeStr = `${pad2(now.getHours())}-${pad2(now.getMinutes())}-${pad2(now.getSeconds())}`;
+    const template = typeof filenameTemplate === 'string' && filenameTemplate.trim()
+      ? filenameTemplate.trim()
+      : 'kit-{date}-{time}';
+    const raw = template
+      .replaceAll('{title}', String(captureMeta.title || ''))
+      .replaceAll('{date}', dateStr)
+      .replaceAll('{time}', timeStr)
+      .replaceAll('{url}', String(captureMeta.url || ''));
+    const safe = raw
+      .replace(/[\\/:*?"<>|\u0000-\u001F]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 120) || `kit-${dateStr}-${timeStr}`;
+    return `${safe}.${ext}`;
+  }
+
+  function openCaptureDb() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(CAPTURE_DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(CAPTURE_DB_STORE)) {
+          db.createObjectStore(CAPTURE_DB_STORE, { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('Failed to open capture DB'));
+    });
+  }
+
+  async function idbTakeCaptureRecord(id) {
+    const db = await openCaptureDb();
+    try {
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction(CAPTURE_DB_STORE, 'readwrite');
+        const store = tx.objectStore(CAPTURE_DB_STORE);
+        const getReq = store.get(id);
+        let record = null;
+        getReq.onsuccess = () => {
+          record = getReq.result || null;
+          if (record) store.delete(id);
+        };
+        getReq.onerror = () => reject(getReq.error || new Error('Failed to read capture'));
+        tx.oncomplete = () => resolve(record);
+        tx.onerror = () => reject(tx.error || new Error('Failed to read capture'));
+        tx.onabort = () => reject(tx.error || new Error('Failed to read capture'));
+      });
+    } finally {
+      db.close();
+    }
+  }
+
+  async function loadEditorSettings() {
+    try {
+      const prefs = await chrome.storage.local.get(['defaultFormat', 'filenameTemplate']);
+      const rawFormat = String(prefs.defaultFormat || 'png').toLowerCase();
+      const normalized = rawFormat === 'jpeg' ? 'jpg' : rawFormat;
+      if (!isPremium && (normalized === 'jpg' || normalized === 'pdf')) {
+        defaultFormat = 'png';
+      } else if (['png', 'jpg', 'pdf'].includes(normalized)) {
+        defaultFormat = normalized;
+      } else {
+        defaultFormat = 'png';
+      }
+      filenameTemplate = (!isPremium && prefs.filenameTemplate && prefs.filenameTemplate !== 'kit-{date}-{time}')
+        ? 'kit-{date}-{time}'
+        : (prefs.filenameTemplate || 'kit-{date}-{time}');
+    } catch (e) {
+      defaultFormat = 'png';
+      filenameTemplate = 'kit-{date}-{time}';
+    }
+  }
+
+  // ── Load screenshot from IndexedDB ─────────────────────────────────────────
   async function loadCapture() {
     if (!captureId) { showError('No capture ID found.'); return; }
     try {
-      const data = await chromeStorageGet(`capture_${captureId}`);
-      if (!data) { showError('Screenshot data not found.'); return; }
+      const rec = await idbTakeCaptureRecord(captureId);
+      if (!rec || !rec.blob) { showError('Screenshot data not found.'); return; }
+      captureMeta = rec.meta || {};
+      const imageUrl = URL.createObjectURL(rec.blob);
       const img = new Image();
       img.onload = () => {
         baseImage = img;
@@ -45,12 +133,13 @@
         ctx.drawImage(img, 0, 0);
         pushUndo();
         loadingScreen.classList.add('hidden');
-
-        // Cleanup session storage
-        chrome.storage.session.remove([`capture_${captureId}`, `meta_${captureId}`]);
+        URL.revokeObjectURL(imageUrl);
       };
-      img.onerror = () => showError('Failed to decode screenshot.');
-      img.src = data;
+      img.onerror = () => {
+        URL.revokeObjectURL(imageUrl);
+        showError('Failed to decode screenshot.');
+      };
+      img.src = imageUrl;
     } catch (e) {
       showError('Failed to load screenshot: ' + e.message);
     }
@@ -323,23 +412,19 @@
 
   document.getElementById('color-picker').addEventListener('input', e => { strokeColor = e.target.value; });
   document.getElementById('fill-picker').addEventListener('input', e => { fillColor = e.target.value; });
-  document.getElementById('stroke-size').addEventListener('input', e => { strokeSize = parseInt(e.target.value); });
-  document.getElementById('font-size-sel').addEventListener('change', e => { fontSize = parseInt(e.target.value); });
+  document.getElementById('stroke-size').addEventListener('input', e => { strokeSize = parseInt(e.target.value, 10); });
+  document.getElementById('font-size-sel').addEventListener('change', e => { fontSize = parseInt(e.target.value, 10); });
   document.getElementById('btn-undo').addEventListener('click', undo);
   document.getElementById('btn-redo').addEventListener('click', redo);
 
   // ── Download / export ──────────────────────────────────────────────────────
-  function getFilename(ext) {
-    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    return `kit-screenshot-${ts}.${ext}`;
-  }
-
   document.getElementById('btn-download-png').addEventListener('click', () => {
-    triggerDownload(canvas.toDataURL('image/png'), getFilename('png'));
+    triggerDownload(canvas.toDataURL('image/png'), buildFilename('png'));
   });
 
   document.getElementById('btn-download-jpg').addEventListener('click', () => {
-    triggerDownload(canvas.toDataURL('image/jpeg', 0.92), getFilename('jpg'));
+    if (!isPremium) { showPremiumNag(); return; }
+    triggerDownload(canvas.toDataURL('image/jpeg', 0.92), buildFilename('jpg'));
   });
 
   document.getElementById('btn-download-pdf').addEventListener('click', () => {
@@ -366,7 +451,7 @@
       const scale = Math.min(pdfW / w, pdfH / h);
       const doc = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
       doc.addImage(imgData, 'JPEG', 0, 0, w * scale, h * scale);
-      doc.save(getFilename('pdf'));
+      doc.save(buildFilename('pdf'));
     } catch (e) {
       alert('PDF export failed: ' + e.message);
     }
@@ -410,7 +495,13 @@
     if (e.target === textInput) return;
     if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); return; }
     if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) { e.preventDefault(); redo(); return; }
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); document.getElementById('btn-download-png').click(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      const btnByFormat = { png: 'btn-download-png', jpg: 'btn-download-jpg', pdf: 'btn-download-pdf' };
+      const fallbackFormat = (!isPremium && (defaultFormat === 'jpg' || defaultFormat === 'pdf')) ? 'png' : defaultFormat;
+      document.getElementById(btnByFormat[fallbackFormat] || 'btn-download-png').click();
+      return;
+    }
 
     const toolMap = { s: 'select', p: 'pen', a: 'arrow', r: 'rect', e: 'ellipse', t: 'text', b: 'blur' };
     if (!e.ctrlKey && !e.metaKey && !e.altKey && toolMap[e.key]) {
@@ -421,12 +512,6 @@
   });
 
   // ── Helpers ────────────────────────────────────────────────────────────────
-  function chromeStorageGet(key) {
-    return new Promise(resolve => {
-      chrome.storage.session.get(key, data => resolve(data[key]));
-    });
-  }
-
   function sendMsg(msg) {
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage(msg, resp => {
@@ -457,5 +542,6 @@
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   await checkPremium();
+  await loadEditorSettings();
   await loadCapture();
 })();
