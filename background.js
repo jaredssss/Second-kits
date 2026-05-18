@@ -181,6 +181,45 @@ function pad2(n) {
   return String(n).padStart(2, '0');
 }
 
+function canCaptureTab(tab) {
+  if (!tab || !tab.id || !tab.windowId) return false;
+  if (!tab.url || typeof tab.url !== 'string') return false;
+  try {
+    const protocol = new URL(tab.url).protocol;
+    return protocol === 'http:' || protocol === 'https:' || protocol === 'file:';
+  } catch {
+    return false;
+  }
+}
+
+async function getActiveTabForCapture() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab) return { error: 'No active tab' };
+  if (!canCaptureTab(tab)) {
+    return { error: 'This page cannot be captured. Open a regular webpage and try again.' };
+  }
+  return { tab };
+}
+
+function normalizeCaptureError(err) {
+  const message = err?.message || String(err);
+  if (message === 'page_too_large') return 'page_too_large';
+
+  if (/No active web contents to capture/i.test(message)) {
+    return 'No active webpage to capture. Reload the page or switch to another tab and try again.';
+  }
+
+  if (/Cannot access contents of url/i.test(message) || /chrome:\/\//i.test(message)) {
+    return 'This page is protected by Chrome and cannot be captured. Open a regular webpage and try again.';
+  }
+
+  if (/No tab with id/i.test(message) || /The tab was closed/i.test(message)) {
+    return 'The tab is no longer available. Re-open the page and try again.';
+  }
+
+  return message;
+}
+
 function formatFilenameTemplate(template, meta = {}, date = new Date()) {
   const safeTemplate = typeof template === 'string' && template.trim()
     ? template.trim()
@@ -390,18 +429,24 @@ async function handleMessage(msg, sender) {
     }
 
     case 'capture_visible': {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab) return { error: 'No active tab' };
-      const blob = await captureVisible(tab);
-      const meta = { url: tab.url, title: tab.title, type: 'visible' };
-      if (await isPremium()) await saveToHistory(blob, meta);
-      await outputCapture(blob, meta);
-      return { ok: true };
+      const tabState = await getActiveTabForCapture();
+      if (tabState.error) return { error: tabState.error };
+      const { tab } = tabState;
+      try {
+        const blob = await captureVisible(tab);
+        const meta = { url: tab.url, title: tab.title, type: 'visible' };
+        if (await isPremium()) await saveToHistory(blob, meta);
+        await outputCapture(blob, meta);
+        return { ok: true };
+      } catch (err) {
+        return { error: normalizeCaptureError(err) };
+      }
     }
 
     case 'capture_fullpage': {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab) return { error: 'No active tab' };
+      const tabState = await getActiveTabForCapture();
+      if (tabState.error) return { error: tabState.error };
+      const { tab } = tabState;
 
       const premium = await isPremium();
       if (!premium) {
@@ -411,17 +456,21 @@ async function handleMessage(msg, sender) {
         }
       }
 
-      const blob = await captureFullPage(tab, {
-        settleMs: msg.settleMs || CAPTURE_SETTLE_MS,
-        hideFixed: msg.hideFixed !== false
-      });
+      try {
+        const blob = await captureFullPage(tab, {
+          settleMs: msg.settleMs || CAPTURE_SETTLE_MS,
+          hideFixed: msg.hideFixed !== false
+        });
 
-      if (!premium) await incrementTodayCount();
+        if (!premium) await incrementTodayCount();
 
-      const meta = { url: tab.url, title: tab.title, type: 'fullpage' };
-      if (premium) await saveToHistory(blob, meta);
-      await outputCapture(blob, meta);
-      return { ok: true };
+        const meta = { url: tab.url, title: tab.title, type: 'fullpage' };
+        if (premium) await saveToHistory(blob, meta);
+        await outputCapture(blob, meta);
+        return { ok: true };
+      } catch (err) {
+        return { error: normalizeCaptureError(err) };
+      }
     }
 
     case 'refresh_premium': {
